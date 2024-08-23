@@ -1,0 +1,39 @@
+# Trackable name for objects created from this Chart. 
+appPrefix: pytorch-distributed
+
+MultiprocessingDistributed:
+  # N Nodes
+  replicas: 2
+
+  # N GPU per Node
+  nproc_per_node: 8
+
+  # Defined this way in the event of MIG labels but should equal nproc_per_node.
+  resources:
+    limits:
+      nvidia.com/gpu: 8
+
+  # Helpful for heterogenous machine environments.
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: nvidia.com/gpu.count
+                operator: In
+                values:
+                  - "1"
+                  - "8"
+
+  # Variable for args:
+  batchSize: 256
+  arch: resnet152
+    
+
+baseImage:
+  repository: ghcr.io/cyril-k/torch_multinode
+  pullPolicy: Always
+  tag: "resnet_toy"
+
+
+wandbApiKey: ""

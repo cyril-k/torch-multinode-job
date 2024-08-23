@@ -1,0 +1,108 @@
+{{- $jobName := "" }}
+{{- $i := "" }}
+{{- $current := "" }}
+{{- $affinity := "" }}
+{{- $imagepullsecret := "" }}
+{{- $resources := "" }}
+{{- $start := 0 }}
+
+{{- $nproc_per_node := .Values.MultiprocessingDistributed.nproc_per_node | int  }}
+{{- $nnodes := .Values.MultiprocessingDistributed.replicas | int  }}
+{{- $image_version := printf "%s:%s" .Values.baseImage.repository .Values.baseImage.tag }}
+{{- $namespace := .Release.Namespace | toString }}
+{{- $appPrefix := .Values.appPrefix | toString }}
+
+{{- $wandbApiKey := .Values.wandbApiKey | toString }}
+{{- $masterAddr  := print $appPrefix "-0." $appPrefix "." $namespace ".svc.cluster.local" }}
+{{- $batchSize := .Values.MultiprocessingDistributed.batchSize | int }}
+{{- $arch := printf "%s" .Values.MultiprocessingDistributed.arch }}
+
+{{- with .Values.imagePullSecrets }}
+    {{- $imagepullsecret = toYaml . | nindent 8 }}
+{{- end }}
+
+{{- with .Values.MultiprocessingDistributed.affinity }}
+    {{- $affinity = toYaml . | nindent 12 }}
+{{- end }}
+
+{{- with .Values.MultiprocessingDistributed.resources }}
+    {{- $resources = toYaml . | nindent 12 }}
+{{- end }}
+
+{{- range untilStep $start $nnodes 1 }}
+  {{- $i = . | toString }}
+  {{- $jobName = print $appPrefix "-" $i }}
+  {{- $current = print $jobName "." $appPrefix "." $namespace ".svc.cluster.local:5005" | quote }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $jobName }}
+  namespace: {{ $namespace }}
+  labels:
+    app: {{ $appPrefix }}
+spec:
+  ttlSecondsAfterFinished: 20
+  template:
+    metadata:
+      labels: 
+        app: {{ $appPrefix }}
+    spec:
+      affinity: 
+    {{ $affinity }}
+      imagePullSecrets:
+    {{ $imagepullsecret }}
+      subdomain: {{ $appPrefix }}
+      hostname: {{ $jobName }}
+      restartPolicy: Never
+      containers: 
+        - name: {{ $jobName }}
+          image: {{ $image_version }}
+          imagePullPolicy: Always
+          resources:
+        {{- $resources }}
+          ports:
+            - name: workers
+              containerPort: 5005 
+          args: 
+            - torchrun
+            - --nproc_per_node={{ $nproc_per_node }}
+            - --nnodes={{ $nnodes }}
+            - --node_rank={{ $i }}
+            - --master_addr={{ $masterAddr }}
+            - --master_port=5005
+            - train_toy.py
+            - --backend=nccl
+            - --use_syn
+            - --batch_size={{ $batchSize }}
+            - --arch={{ $arch }}
+          env:
+            - name: NCCL_SOCKET_IFNAME
+              value: "=eth0"
+            - name: TORCH_DISTRIBUTED_DEBUG
+              value: INFO
+            - name: NCCL_DEBUG
+              value: INFO
+            - name: CUDA_LAUNCH_BLOCKING
+              value: "0"
+            - name: WANDB_API_KEY
+              value: "{{ $wandbApiKey }}"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            # - name: data
+            #   mountPath: /workspace/data
+    {{ if gt . 0 }}
+      initContainers:
+        - name: "init-{{ $jobName }}-connection"
+          image: busybox:1.28
+          command: ['sh', '-c', 'until nslookup {{ print $appPrefix "-0." $appPrefix "." $namespace ".svc.cluster.local" | quote }}; do echo waiting for head node...; sleep 10; done']
+    {{- end }}
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+        # - name: data
+        #   persistentVolumeClaim:
+        #     claimName: {{ $appPrefix }}
+{{- end }}
