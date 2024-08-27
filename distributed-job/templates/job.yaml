@@ -12,6 +12,7 @@
 {{- $namespace := .Release.Namespace | toString }}
 {{- $appPrefix := .Values.appPrefix | toString }}
 
+{{- $hfApiKey := .Values.hfApiKey | toString }}
 {{- $wandbApiKey := .Values.wandbApiKey | toString }}
 {{- $masterAddr  := print $appPrefix "-0." $appPrefix "." $namespace ".svc.cluster.local" }}
 {{- $batchSize := .Values.MultiprocessingDistributed.batchSize | int }}
@@ -69,14 +70,44 @@ spec:
             - --nproc_per_node={{ $nproc_per_node }}
             - --nnodes={{ $nnodes }}
             - --node_rank={{ $i }}
-            - --master_addr={{ $masterAddr }}
-            - --master_port=5005
-            - train_toy.py
-            - --backend=nccl
-            - --use_syn
-            - --batch_size={{ $batchSize }}
-            - --arch={{ $arch }}
+            - --rdzv_backend=c10d
+            - --rdzv_endpoint={{ $masterAddr }}:5005
+            - finetuning.py
+            - --enable_fsdp
+            - --model_name=meta-llama/Meta-Llama-3-8B 
+            - --output_dir=./
+            - --dataset="llamaguard_toxicchat_dataset"
+            - --fsdp_config.pure_bf16
+            - --use_fast_kernels
+            - --batch_size_training=8
+            - --num_workers_dataloader=8
+            - --use-wandb
+            # - --sharding_strategy=HYBRID_SHARD
           env:
+            - name: OMPI_ALLOW_RUN_AS_ROOT
+              value: "1"
+            - name: OMPI_ALLOW_RUN_AS_ROOT_CONFIRM
+              value: "1"
+            - name: NCCL_COLLNET_ENABLE
+              value: "0"
+            - name: SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING
+              value: "1"
+            - name: UCX_NET_DEVICES
+              value: "mlx5_0:1,mlx5_1:1,mlx5_2:1,mlx5_3:1,mlx5_4:1,mlx5_5:1,mlx5_6:1,mlx5_7:1"
+            - name: NCCL_IB_HCA
+              value: "mlx5"
+            - name: MAX_ACC_OUT_READ
+              value: "128"
+            - name: TORCH_NCCL_ASYNC_ERROR_HANDLING
+              value: "1"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: CUDA_DEVICE_MAX_CONNECTIONS
+              value: "1"
+            - name: NCCL_IB_SL
+              value: "1"
+            - name: NCCL_TOPO_FILE
+              value: "/workspace/nccl-topology/nccl-topo-h100-v1.xml"
             - name: NCCL_SOCKET_IFNAME
               value: "=eth0"
             - name: TORCH_DISTRIBUTED_DEBUG
@@ -87,11 +118,17 @@ spec:
               value: "0"
             - name: WANDB_API_KEY
               value: "{{ $wandbApiKey }}"
+            - name: HF_TOKEN
+              value: "{{ $hfApiKey }}"
+          securityContext:
+              privileged: true
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm
             # - name: data
             #   mountPath: /workspace/data
+            # - name: ib
+            #   mountPath: /dev/infiniband
     {{ if gt . 0 }}
       initContainers:
         - name: "init-{{ $jobName }}-connection"
@@ -105,4 +142,7 @@ spec:
         # - name: data
         #   persistentVolumeClaim:
         #     claimName: {{ $appPrefix }}
+        # - name: ib
+        #   hostPath:
+        #     path: /dev/infiniband
 {{- end }}

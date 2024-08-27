@@ -25,15 +25,11 @@ MultiprocessingDistributed:
                   - "1"
                   - "8"
 
-  # Variable for args:
-  batchSize: 256
-  arch: resnet152
-    
-
 baseImage:
   repository: ghcr.io/cyril-k/torch_multinode
   pullPolicy: Always
-  tag: "resnet_toy"
+  tag: "latest"
 
 
 wandbApiKey: ""
+hfApiKey: ""

@@ -7,5 +7,6 @@ to use:
 
 ```bash
 helm install pytorch-distributed distributed-job \
-    --set wandbApiKey=$WANDB_API_KEY
+    --set wandbApiKey=$WANDB_API_KEY \
+    --set hfApiKey=$HF_TOKEN
 ```
