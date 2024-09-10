@@ -72,17 +72,7 @@ spec:
             - --node_rank={{ $i }}
             - --rdzv_backend=c10d
             - --rdzv_endpoint={{ $masterAddr }}:5005
-            - finetuning.py
-            - --enable_fsdp
-            - --model_name=meta-llama/Meta-Llama-3-8B 
-            - --output_dir=./
-            - --dataset="llamaguard_toxicchat_dataset"
-            - --fsdp_config.pure_bf16
-            - --use_fast_kernels
-            - --batch_size_training=8
-            - --num_workers_dataloader=8
-            - --use-wandb
-            # - --sharding_strategy=HYBRID_SHARD
+            - fsdp_tp_example.py
           env:
             - name: OMPI_ALLOW_RUN_AS_ROOT
               value: "1"
@@ -116,17 +106,11 @@ spec:
               value: INFO
             - name: CUDA_LAUNCH_BLOCKING
               value: "0"
-            - name: WANDB_API_KEY
-              value: "{{ $wandbApiKey }}"
-            - name: HF_TOKEN
-              value: "{{ $hfApiKey }}"
           securityContext:
               privileged: true
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm
-            # - name: data
-            #   mountPath: /workspace/data
             # - name: ib
             #   mountPath: /dev/infiniband
     {{ if gt . 0 }}
@@ -139,9 +123,6 @@ spec:
         - name: dshm
           emptyDir:
             medium: Memory
-        # - name: data
-        #   persistentVolumeClaim:
-        #     claimName: {{ $appPrefix }}
         # - name: ib
         #   hostPath:
         #     path: /dev/infiniband

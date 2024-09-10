@@ -1,5 +1,5 @@
 # Trackable name for objects created from this Chart. 
-appPrefix: pytorch-distributed
+appPrefix: pytorch-2d-distributed
 
 MultiprocessingDistributed:
   # N Nodes
@@ -26,9 +26,9 @@ MultiprocessingDistributed:
                   - "8"
 
 baseImage:
-  repository: ghcr.io/cyril-k/torch_multinode
+  repository: ghcr.io/cyril-k/torch-2d
   pullPolicy: Always
-  tag: "latest"
+  tag: "2x8"
 
 
 wandbApiKey: ""
