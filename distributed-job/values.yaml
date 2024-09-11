@@ -26,9 +26,9 @@ MultiprocessingDistributed:
                   - "8"
 
 baseImage:
-  repository: ghcr.io/cyril-k/torch-2d
+  repository: ghcr.io/cyril-k/run-xdit
   pullPolicy: Always
-  tag: "2x8"
+  tag: "latest"
 
 
 wandbApiKey: ""
