@@ -73,7 +73,7 @@ spec:
             - --rdzv_backend=c10d
             - --rdzv_endpoint={{ $masterAddr }}:5005
             - ./examples/sd3_example.py
-            - --model=stabilityai/stable-diffusion-3-medium-diffusers
+            - --model=/model-storage/stabilityai/stable-diffusion-3-medium-diffusers
             - --ulysses_degree={{ $nproc_per_node }}
             - --height=1024
             - --width=1024
@@ -117,19 +117,23 @@ spec:
               value: init,env,tuning,graph,net,p2p,profile,shm
             - name: CUDA_LAUNCH_BLOCKING
               value: "0"
-            - name: NCCL_TOPO_DUMP_FILE
-              value: k8s-noib-out.xml
+            # - name: NCCL_TOPO_DUMP_FILE
+            #   value: /model-storage/debug-results/k8s-noib-out.xml
+            # - name: NCCL_DEBUG_FILE
+            #   value: /model-storage/debug-results/nccl_log_eth2.%h.%p
             - name: HF_TOKEN
               value: "{{ $hfApiKey }}"
           securityContext:
               privileged: true
           volumeMounts:
-            - name: dshm
-              mountPath: /dev/shm
+            - mountPath: /dev/shm
+              name: dshm
+            - mountPath: /root/.cache/huggingface
+              name: cache-volume
             # - name: ib
             #   mountPath: /dev/infiniband
-            # - name: hf-cache
-            #   mountPath: /root/.cache/huggingface
+            - mountPath: /model-storage
+              name: model-storage-volume
     {{ if gt . 0 }}
       initContainers:
         - name: "init-{{ $jobName }}-connection"
@@ -140,10 +144,13 @@ spec:
         - name: dshm
           emptyDir:
             medium: Memory
+        - name: cache-volume
+          emptyDir: { }
         # - name: ib
         #   hostPath:
         #     path: /dev/infiniband
-        # - name: hf-cache
-        #   hostPath: 
-        #     path: ~/.cache/huggingface
+        - name: model-storage-volume
+          persistentVolumeClaim:
+            claimName: csi-s3-model-storage-pvc-v1 
+            readOnly: false
 {{- end }}
