@@ -43,7 +43,7 @@ metadata:
   labels:
     app: {{ $appPrefix }}
 spec:
-  ttlSecondsAfterFinished: 20
+  ttlSecondsAfterFinished: 600
   template:
     metadata:
       labels: 
@@ -96,8 +96,10 @@ spec:
               value: "1"
             - name: NCCL_IB_SL
               value: "1"
-            - name: NCCL_TOPO_FILE
-              value: "/workspace/nccl-topology/nccl-topo-h100-v1.xml"
+            - name: NCCL_IB_DISABLE
+              value: "1"
+            - name: NCCL_DEBUG_SUBSYS
+              value: init,env,tuning,graph,net,p2p,profile,shm,COLL
             - name: NCCL_SOCKET_IFNAME
               value: "=eth0"
             - name: TORCH_DISTRIBUTED_DEBUG

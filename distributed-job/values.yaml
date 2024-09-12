@@ -3,7 +3,7 @@ appPrefix: pytorch-2d-distributed
 
 MultiprocessingDistributed:
   # N Nodes
-  replicas: 2
+  replicas: 3
 
   # N GPU per Node
   nproc_per_node: 8
