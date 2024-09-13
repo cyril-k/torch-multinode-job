@@ -66,6 +66,12 @@ spec:
             - name: workers
               containerPort: 5005 
           args: 
+            - nsys 
+            - profile 
+            - --trace=cuda,nvtx 
+            - --output=/model-storage/debug-results/nsys.testname.`hostname`.`date +%s` 
+            - --nic-metrics=true  
+            - --gpu-metrics-device=all
             - torchrun
             - --nproc_per_node={{ $nproc_per_node }}
             - --nnodes={{ $nnodes }}
@@ -78,7 +84,7 @@ spec:
             - --height=1024
             - --width=1024
             - --no_use_resolution_binning
-            - --num_inference_steps=20
+            - --num_inference_steps=10000
             - --warmup_steps=0
             - --prompt="A small dog"
             - --use_cfg_parallel
@@ -101,12 +107,14 @@ spec:
               value: "1"
             - name: PYTHONUNBUFFERED
               value: "1"
+            - name: PYTHONWARNINGS
+              value: "ignore"
             - name: CUDA_DEVICE_MAX_CONNECTIONS
               value: "1"
             - name: NCCL_IB_SL
               value: "1"
-            - name: NCCL_IB_DISABLE
-              value: "1"
+            # - name: NCCL_IB_DISABLE
+            #   value: "1"
             - name: NCCL_SOCKET_IFNAME
               value: "=eth0"
             - name: TORCH_DISTRIBUTED_DEBUG
@@ -114,13 +122,15 @@ spec:
             - name: NCCL_DEBUG
               value: INFO
             - name: NCCL_DEBUG_SUBSYS
-              value: init,env,tuning,graph,net,p2p,profile,shm
+              value: init,env,graph,net,p2p,profile,shm
             - name: CUDA_LAUNCH_BLOCKING
               value: "0"
             # - name: NCCL_TOPO_DUMP_FILE
             #   value: /model-storage/debug-results/k8s-noib-out.xml
-            # - name: NCCL_DEBUG_FILE
-            #   value: /model-storage/debug-results/nccl_log_eth2.%h.%p
+            - name: NCCL_TOPO_FILE
+              value: "/topo-config/nccl-topo-h100-v1.xml"
+            - name: NCCL_DEBUG_FILE
+              value: /model-storage/debug-results/nccl_log_eth2.%h.%p
             - name: HF_TOKEN
               value: "{{ $hfApiKey }}"
           securityContext:
@@ -132,6 +142,8 @@ spec:
               name: cache-volume
             # - name: ib
             #   mountPath: /dev/infiniband
+            - mountPath: /topo-config
+              name: topo-config-volume
             - mountPath: /model-storage
               name: model-storage-volume
     {{ if gt . 0 }}
@@ -149,6 +161,9 @@ spec:
         # - name: ib
         #   hostPath:
         #     path: /dev/infiniband
+        - name: topo-config-volume
+          configMap:
+            name: topo-config
         - name: model-storage-volume
           persistentVolumeClaim:
             claimName: csi-s3-model-storage-pvc-v1 
