@@ -74,14 +74,17 @@ spec:
             - --rdzv_endpoint={{ $masterAddr }}:5005
             - finetuning.py
             - --enable_fsdp
-            - --model_name=meta-llama/Meta-Llama-3-8B 
-            - --output_dir=./
+            - --model_name=/model-storage/meta-llama/Meta-Llama-3-8B 
+            - --output_dir=/workspace/data/checkpoints
+            - --dist_checkpoint_root_folder=data/fsdp-checkpoints
+            - --dist_checkpoint_folder=test-job
             - --dataset="llamaguard_toxicchat_dataset"
             - --fsdp_config.pure_bf16
             - --use_fast_kernels
             - --batch_size_training=8
             - --num_workers_dataloader=8
-            - --use-wandb
+            - --num_epochs=5
+            # - --use-wandb
             # - --sharding_strategy=HYBRID_SHARD
           env:
             - name: OMPI_ALLOW_RUN_AS_ROOT
@@ -107,7 +110,7 @@ spec:
             - name: NCCL_IB_SL
               value: "1"
             - name: NCCL_TOPO_FILE
-              value: "/workspace/nccl-topology/nccl-topo-h100-v1.xml"
+              value: "/topo-config/nccl-topo-h100-v1.xml"
             - name: NCCL_SOCKET_IFNAME
               value: "=eth0"
             - name: TORCH_DISTRIBUTED_DEBUG
@@ -125,10 +128,14 @@ spec:
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm
-            # - name: data
-            #   mountPath: /workspace/data
+            - name: data
+              mountPath: /workspace/data
             # - name: ib
             #   mountPath: /dev/infiniband
+            - mountPath: /topo-config
+              name: topo-config-volume
+            - mountPath: /model-storage
+              name: model-storage-volume
     {{ if gt . 0 }}
       initContainers:
         - name: "init-{{ $jobName }}-connection"
@@ -139,10 +146,17 @@ spec:
         - name: dshm
           emptyDir:
             medium: Memory
-        # - name: data
-        #   persistentVolumeClaim:
-        #     claimName: {{ $appPrefix }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $appPrefix }}
         # - name: ib
         #   hostPath:
         #     path: /dev/infiniband
+        - name: topo-config-volume
+          configMap:
+            name: topo-config
+        - name: model-storage-volume
+          persistentVolumeClaim:
+            claimName: csi-s3-model-storage-pvc-v1 
+            readOnly: false
 {{- end }}
