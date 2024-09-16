@@ -84,7 +84,7 @@ spec:
             - --height=1024
             - --width=1024
             - --no_use_resolution_binning
-            - --num_inference_steps=10000
+            - --num_inference_steps=100
             - --warmup_steps=0
             - --prompt="A small dog"
             - --use_cfg_parallel
