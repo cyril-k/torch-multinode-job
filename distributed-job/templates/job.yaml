@@ -5,6 +5,7 @@
 {{- $imagepullsecret := "" }}
 {{- $resources := "" }}
 {{- $start := 0 }}
+{{- $subfolder := "olbius10k-wIB-1" }}
 
 {{- $nproc_per_node := .Values.MultiprocessingDistributed.nproc_per_node | int  }}
 {{- $nnodes := .Values.MultiprocessingDistributed.replicas | int  }}
@@ -66,12 +67,12 @@ spec:
             - name: workers
               containerPort: 5005 
           args: 
-            - nsys 
-            - profile 
-            - --trace=cuda,nvtx 
-            - --output=/model-storage/debug-results/nsys.testname.`hostname`.`date +%s` 
-            - --nic-metrics=true  
-            - --gpu-metrics-device=all
+            # - nsys 
+            # - profile 
+            # - --trace=cuda,nvtx 
+            # - --output=/model-storage/debug-results/{{ $subfolder }}/nsys.testname.{{ $masterAddr }}.{{ $i }}
+            # - --nic-metrics=true  
+            # - --gpu-metrics-device=all
             - torchrun
             - --nproc_per_node={{ $nproc_per_node }}
             - --nnodes={{ $nnodes }}
@@ -84,7 +85,7 @@ spec:
             - --height=1024
             - --width=1024
             - --no_use_resolution_binning
-            - --num_inference_steps=100
+            - --num_inference_steps=10000
             - --warmup_steps=0
             - --prompt="A small dog"
             - --use_cfg_parallel
@@ -117,20 +118,25 @@ spec:
             #   value: "1"
             - name: NCCL_SOCKET_IFNAME
               value: "=eth0"
-            - name: TORCH_DISTRIBUTED_DEBUG
-              value: INFO
+            # - name: TORCH_DISTRIBUTED_DEBUG
+            #   value: INFO
             - name: NCCL_DEBUG
               value: INFO
-            - name: NCCL_DEBUG_SUBSYS
-              value: init,env,graph,net,p2p,profile,shm
+            # - name: NCCL_SOCKET_NTHREADS
+            #   value: "4"
+            # - name: NCCL_NSOCKS_PERTHREAD
+            #   value: "4"
+            # - name: NCCL_DEBUG_SUBSYS
+            #   value: init,env,graph,net,p2p,profile,shm 
+              # value: init,env,tuning,graph,net,p2p,profile,shm 
             - name: CUDA_LAUNCH_BLOCKING
               value: "0"
-            # - name: NCCL_TOPO_DUMP_FILE
-            #   value: /model-storage/debug-results/k8s-noib-out.xml
+            - name: NCCL_TOPO_DUMP_FILE
+              value: /model-storage/debug-results/{{ $subfolder }}/k8s-noib-out.xml
             - name: NCCL_TOPO_FILE
               value: "/topo-config/nccl-topo-h100-v1.xml"
             - name: NCCL_DEBUG_FILE
-              value: /model-storage/debug-results/nccl_log_eth2.%h.%p
+              value: /model-storage/debug-results/{{ $subfolder }}/nccl_log_eth2.%h.%p
             - name: HF_TOKEN
               value: "{{ $hfApiKey }}"
           securityContext:
