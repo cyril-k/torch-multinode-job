@@ -87,10 +87,6 @@ spec:
             # - --use-wandb
             # - --sharding_strategy=HYBRID_SHARD
           env:
-            - name: OMPI_ALLOW_RUN_AS_ROOT
-              value: "1"
-            - name: OMPI_ALLOW_RUN_AS_ROOT_CONFIRM
-              value: "1"
             - name: NCCL_COLLNET_ENABLE
               value: "0"
             - name: SHARP_COLL_ENABLE_PCI_RELAXED_ORDERING
@@ -109,8 +105,8 @@ spec:
               value: "1"
             - name: NCCL_IB_SL
               value: "1"
-            - name: NCCL_TOPO_FILE
-              value: "/topo-config/nccl-topo-h100-v1.xml"
+            # - name: NCCL_TOPO_FILE
+            #   value: "/topo-config/nccl-topo-h100-v1.xml"
             - name: NCCL_SOCKET_IFNAME
               value: "=eth0"
             - name: TORCH_DISTRIBUTED_DEBUG
@@ -132,8 +128,8 @@ spec:
               mountPath: /workspace/data
             # - name: ib
             #   mountPath: /dev/infiniband
-            - mountPath: /topo-config
-              name: topo-config-volume
+            # - mountPath: /topo-config
+            #   name: topo-config-volume
             - mountPath: /model-storage
               name: model-storage-volume
     {{ if gt . 0 }}
@@ -152,9 +148,9 @@ spec:
         # - name: ib
         #   hostPath:
         #     path: /dev/infiniband
-        - name: topo-config-volume
-          configMap:
-            name: topo-config
+        # - name: topo-config-volume
+        #   configMap:
+        #     name: topo-config
         - name: model-storage-volume
           persistentVolumeClaim:
             claimName: csi-s3-model-storage-pvc-v1 
