@@ -8,9 +8,9 @@ metadata:
   labels:
     app: {{ .Values.appPrefix }}
 spec:
-  storageClassName: hostpath
+  storageClassName: csi-mounted-fs-path-sc
   accessModes:
     - ReadWriteMany
   resources:
     requests:
-      storage: 500Gi
+      storage: 50Gi
